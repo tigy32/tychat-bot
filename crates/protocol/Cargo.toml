@@ -2,7 +2,7 @@
 name = "tychat-protocol"
 version = "0.0.0"
 edition = "2021"
-license = "UNLICENSED"
+license = "MIT OR Apache-2.0"
 publish = false
 
 [lib]

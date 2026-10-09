@@ -169,3 +169,8 @@ crate with `tychat-crypto` and `tychat-protocol` into a standalone Cargo
 workspace stamped with the source commit (`TYCHAT_SOURCE`). The commands
 above work unchanged in the export, except the local binary, which stays in
 Tychat.
+
+## License
+
+Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or
+[MIT license](LICENSE-MIT) at your option.
