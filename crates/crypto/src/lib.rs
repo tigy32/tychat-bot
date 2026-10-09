@@ -555,19 +555,34 @@ pub fn verify_device_certificate(
         .map_err(|_| CryptoError::InvalidSignature)
 }
 
-pub fn identity_fingerprint(statement: &IdentityStatement) -> String {
+fn identity_fingerprint_digest(statement: &IdentityStatement) -> [u8; 32] {
     let mut h = Sha256::new();
     h.update(DOMAIN_IDENTITY_FP);
     h.update(statement.identity_id);
     h.update(statement.generation.to_be_bytes());
     h.update(statement.root_sig_pub);
-    let digest: [u8; 32] = h.finalize().into();
-    let digits = to_decimal_padded(&digest, 78);
-    digits.as_bytes()[..60]
-        .chunks(5)
-        .map(|c| std::str::from_utf8(c).expect("ascii digits"))
-        .collect::<Vec<_>>()
-        .join(" ")
+    h.finalize().into()
+}
+
+/// `SHA-256("tychat-identity-fp-v1" || identity_id || generation_be ||
+/// root_sig_pub)` rendered by [`fingerprint`]'s display encoding.
+pub fn identity_fingerprint(statement: &IdentityStatement) -> String {
+    display_fingerprint(&identity_fingerprint_digest(statement))
+}
+
+/// Whether `pin`, a spaceless identity fingerprint carried by a public
+/// contact link or Contact ID, names `statement`. Accepts the current
+/// 24-character base64url form and the 60-digit decimal form that links
+/// published before ADR-0001's 2026-10-09 amendment carry.
+pub fn identity_fingerprint_matches_pin(statement: &IdentityStatement, pin: &str) -> bool {
+    let digest = identity_fingerprint_digest(statement);
+    if pin.len() == FINGERPRINT_CHARS && pin.bytes().all(|b| BASE64URL.contains(&b)) {
+        return compact_fingerprint(&digest) == pin;
+    }
+    if pin.len() == LEGACY_FINGERPRINT_DIGITS && pin.bytes().all(|b| b.is_ascii_digit()) {
+        return to_decimal_padded(&digest, 78)[..LEGACY_FINGERPRINT_DIGITS] == *pin;
+    }
+    false
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1376,18 +1391,39 @@ pub fn verify_roster(
         .map_err(|_| CryptoError::InvalidSignature)
 }
 
-/// `SHA-256("tychat-fp-v1" || sig_pub || kem_pub)` as the first 60 decimal
-/// digits of the zero-padded 78-digit big-endian integer, in 12 groups of 5.
+/// `SHA-256("tychat-fp-v1" || sig_pub || kem_pub)` displayed as its first
+/// 18 bytes in unpadded base64url: 24 characters in 6 groups of 4.
 pub fn fingerprint(sig_pub: &[u8; KEY_LEN], kem_pub: &[u8; KEY_LEN]) -> String {
     let mut h = Sha256::new();
     h.update(DOMAIN_FP);
     h.update(sig_pub);
     h.update(kem_pub);
-    let digest: [u8; 32] = h.finalize().into();
-    let digits = to_decimal_padded(&digest, 78);
-    digits.as_bytes()[..60]
-        .chunks(5)
-        .map(|c| std::str::from_utf8(c).expect("ascii digits"))
+    display_fingerprint(&h.finalize().into())
+}
+
+const FINGERPRINT_BYTES: usize = 18;
+const FINGERPRINT_CHARS: usize = FINGERPRINT_BYTES / 3 * 4;
+const FINGERPRINT_GROUP: usize = 4;
+const LEGACY_FINGERPRINT_DIGITS: usize = 60;
+const BASE64URL: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
+fn compact_fingerprint(digest: &[u8; 32]) -> String {
+    let mut chars = String::with_capacity(FINGERPRINT_CHARS);
+    for [a, b, c] in digest[..FINGERPRINT_BYTES].as_chunks::<3>().0 {
+        let n = (u32::from(*a) << 16) | (u32::from(*b) << 8) | u32::from(*c);
+        for shift in [18, 12, 6, 0] {
+            chars.push(char::from(BASE64URL[((n >> shift) & 63) as usize]));
+        }
+    }
+    chars
+}
+
+fn display_fingerprint(digest: &[u8; 32]) -> String {
+    let compact = compact_fingerprint(digest);
+    compact
+        .as_bytes()
+        .chunks(FINGERPRINT_GROUP)
+        .map(|c| std::str::from_utf8(c).expect("ascii base64url"))
         .collect::<Vec<_>>()
         .join(" ")
 }

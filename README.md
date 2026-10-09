@@ -1,7 +1,7 @@
 # tychat-bot
 
 The runner library for Tychat personal bots and the two crates it builds
-on, exported from Tychat commit `79ac2f5af86ea9380de1d715352666dbfa0a0171`. This is a generated mirror:
+on, exported from Tychat commit `d06a83b489ea8da965fece57430a73abfe6198ed`. This is a generated mirror:
 Tychat is the source of truth and changes are made there.
 
 - `crates/tychat-bot` — pairing, the owner chat, verification and

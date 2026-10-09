@@ -71,8 +71,9 @@ ciphertext.
 1. The owner creates a bot in Tychat Settings → Bots and gets a one-time,
    10-minute pairing code (QR or text).
 2. The runner calls `pair(api_base, code)`, **persists `result.state`
-   immediately**, and shows both fingerprints. The code is spent once
-   `pair` returns.
+   immediately**, and shows both fingerprints (24 base64url characters in
+   6 groups of 4, e.g. `Kx7Q 2mXa 9bTc R-4e 0pLs _wZ3`). The code is spent
+   once `pair` returns.
 3. The owner compares the bot fingerprint in Tychat with the runner's and
    confirms. Tychat opens the owner chat.
 4. The runner calls `BotClient::connect` and drains events. Until the owner
